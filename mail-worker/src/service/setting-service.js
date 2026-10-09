@@ -105,7 +105,15 @@ const settingService = {
 		settingRow.regVerifyOpen = regVerifyOpen
 		settingRow.addVerifyOpen = addVerifyOpen
 
-		settingRow.storageType = await r2Service.storageType(c);
+		// 直接计算存储类型，避免循环查询
+		const { bucket, endpoint, s3AccessKey, s3SecretKey } = settingRow;
+		if (!!(bucket && endpoint && s3AccessKey && s3SecretKey)) {
+			settingRow.storageType = 'S3';
+		} else if (c.env.r2) {
+			settingRow.storageType = 'R2';
+		} else {
+			settingRow.storageType = 'KV';
+		}
 
 		return settingRow;
 	},
@@ -217,7 +225,7 @@ const settingService = {
 			noticePosition: settingRow.noticePosition,
 			noticeWidth: settingRow.noticeWidth,
 			noticeOffset: settingRow.noticeOffset,
-			notice: settingRow.notice,
+			notice: 1,
 			loginDomain: settingRow.loginDomain,
 			linuxdoClientId: settingRow.linuxdoClientId,
 			linuxdoSwitch: settingRow.linuxdoSwitch,

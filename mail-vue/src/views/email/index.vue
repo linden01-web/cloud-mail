@@ -1,25 +1,54 @@
 <template>
-  <emailScroll ref="scroll"
-               :cancel-success="cancelStar"
-               :star-success="addStar"
-               :getEmailList="getEmailList"
-               :emailDelete="emailDelete"
-               :star-add="starAdd"
-               :star-cancel="starCancel"
-               :time-sort="params.timeSort"
-               :email-read="emailRead"
-               :show-unread="true"
-               actionLeft="4px"
-               @jump="jumpContent"
-  >
-    <template #first>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
-            v-if="params.timeSort === 0" width="28" height="28"/>
-      <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
-            width="28" height="28"/>
-    </template>
+  <div class="inbox-search-box">
+    <div class="inbox-search-bar">
+      <el-date-picker
+          v-model="searchForm.dateRange"
+          type="daterange"
+          range-separator="至"
+          start-placeholder="开始日期"
+          end-placeholder="结束日期"
+          value-format="YYYY-MM-DD"
+          clearable
+          class="search-date"
+      />
+      <el-input
+          v-model="searchForm.code"
+          placeholder="邮件标"
+          clearable
+          class="search-input"
+      />
+      <el-input
+          v-model="searchForm.recipient"
+          placeholder="收件人"
+          clearable
+          class="search-input"
+      />
+      <el-button type="primary" @click="resetSearch">重置</el-button>
+    </div>
 
-  </emailScroll>
+    <emailScroll ref="scroll"
+                 :cancel-success="cancelStar"
+                 :star-success="addStar"
+                 :getEmailList="getEmailList"
+                 :emailDelete="emailDelete"
+                 :star-add="starAdd"
+                 :star-cancel="starCancel"
+                 :time-sort="params.timeSort"
+                 :email-read="emailRead"
+                 :show-unread="true"
+                 :search-filters="searchFilters"
+                 actionLeft="4px"
+                 @jump="jumpContent"
+    >
+      <template #first>
+        <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-down-outline"
+              v-if="params.timeSort === 0" width="28" height="28"/>
+        <Icon class="icon" @click="changeTimeSort" icon="material-symbols-light:timer-arrow-up-outline" v-else
+              width="28" height="28"/>
+      </template>
+
+    </emailScroll>
+  </div>
 </template>
 
 <script setup>
@@ -29,7 +58,7 @@ import {useSettingStore} from "@/store/setting.js";
 import emailScroll from "@/components/email-scroll/index.vue"
 import {emailList, emailDelete, emailLatest, emailRead} from "@/request/email.js";
 import {starAdd, starCancel} from "@/request/star.js";
-import {defineOptions, h, onMounted, reactive, ref, watch} from "vue";
+import {computed, defineOptions, h, onMounted, reactive, ref, watch} from "vue";
 import {sleep} from "@/utils/time-utils.js";
 import router from "@/router/index.js";
 import {Icon} from "@iconify/vue";
@@ -44,9 +73,26 @@ const emailStore = useEmailStore();
 const accountStore = useAccountStore();
 const settingStore = useSettingStore();
 const scroll = ref({})
+const searchForm = reactive({
+  dateRange: [],
+  code: '',
+  recipient: '',
+})
+const searchFilters = computed(() => ({
+  startDate: searchForm.dateRange?.[0] || '',
+  endDate: searchForm.dateRange?.[1] || '',
+  code: searchForm.code || '',
+  recipient: searchForm.recipient || '',
+}))
 const params = reactive({
   timeSort: 0,
 })
+
+function resetSearch() {
+  searchForm.dateRange = []
+  searchForm.code = ''
+  searchForm.recipient = ''
+}
 
 onMounted(() => {
   emailStore.emailScroll = scroll;
@@ -153,6 +199,30 @@ function getEmailList(emailId, size) {
 
 </script>
 <style>
+.inbox-search-box {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.inbox-search-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--el-border-color-lighter);
+  background: var(--el-bg-color);
+  flex-wrap: wrap;
+}
+
+.search-date {
+  width: 260px;
+}
+
+.search-input {
+  width: 180px;
+}
+
 .icon {
   cursor: pointer;
 }

@@ -295,6 +295,10 @@ const props = defineProps({
   showUnread: {
     type: Boolean,
     default: false
+  },
+  searchFilters: {
+    type: Object,
+    default: () => ({})
   }
 })
 
@@ -392,8 +396,48 @@ const { arrivedState } = useScroll(scrollbarRef, {
 })
 
 
+function normalizeMatchValue(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
+
+const filteredEmailList = computed(() => {
+  const filters = props.searchFilters || {};
+  const code = normalizeMatchValue(filters.code);
+  const recipient = normalizeMatchValue(filters.recipient);
+  const startDate = filters.startDate ? new Date(filters.startDate) : null;
+  const endDate = filters.endDate ? new Date(filters.endDate) : null;
+
+  return emailList.filter((email) => {
+    const emailCode = normalizeMatchValue(email.code);
+    const searchRecipient = normalizeMatchValue([email.toEmail, email.sendEmail, email.userEmail].filter(Boolean).join(' '));
+    const createTime = new Date(email.createTime);
+
+    if (code && !emailCode.includes(code)) {
+      return false;
+    }
+
+    if (recipient && !searchRecipient.includes(recipient)) {
+      return false;
+    }
+
+    if (startDate && createTime < startDate) {
+      return false;
+    }
+
+    if (endDate) {
+      const endOfDay = new Date(endDate);
+      endOfDay.setHours(23, 59, 59, 999);
+      if (createTime > endOfDay) {
+        return false;
+      }
+    }
+
+    return true;
+  })
+})
+
 const list = computed(() => {
-  return [...emailList, ...expandList]
+  return [...filteredEmailList.value, ...expandList]
 })
 
 const itemHeight = computed(() => {
@@ -747,7 +791,7 @@ function addItem(email) {
 function handleCheckAllChange(val) {
   if (val) {
     let count = 0;
-    emailList.forEach(item => {
+    filteredEmailList.value.forEach(item => {
       if (count < MAX_SELECT_COUNT) {
         item.checked = true;
         count++;
@@ -763,7 +807,7 @@ function handleCheckAllChange(val) {
 
 // 获取选中的邮件列表id
 function getSelectedMailsIds() {
-  return emailList.filter(item => item.checked).map(item => item.emailId);
+  return filteredEmailList.value.filter(item => item.checked).map(item => item.emailId);
 }
 
 function getSelectedDraftsIds() {
@@ -771,10 +815,11 @@ function getSelectedDraftsIds() {
 }
 
 function updateCheckStatus() {
-  const checkedCount = emailList.filter(item => item.checked).length;
+  const visibleList = filteredEmailList.value;
+  const checkedCount = visibleList.filter(item => item.checked).length;
   checkedEmailCount.value = checkedCount;
   const atMax = checkedCount >= MAX_SELECT_COUNT;
-  checkAll.value = emailList.length > 0 && (checkedCount === emailList.length || atMax);
+  checkAll.value = visibleList.length > 0 && (checkedCount === visibleList.length || atMax);
   isIndeterminate.value = checkedCount > 0 && !checkAll.value;
 }
 

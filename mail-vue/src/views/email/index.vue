@@ -1,29 +1,48 @@
 <template>
   <div class="inbox-search-box">
     <div class="inbox-search-bar">
-      <el-date-picker
-          v-model="searchForm.dateRange"
-          type="daterange"
-          range-separator="至"
-          start-placeholder="开始日期"
-          end-placeholder="结束日期"
-          value-format="YYYY-MM-DD"
-          clearable
-          class="search-date"
-      />
-      <el-input
-          v-model="searchForm.code"
-          placeholder="邮件标"
-          clearable
-          class="search-input"
-      />
-      <el-input
-          v-model="searchForm.recipient"
-          placeholder="收件人"
-          clearable
-          class="search-input"
-      />
-      <el-button type="primary" @click="resetSearch">重置</el-button>
+      <div class="search-row-group">
+        <div class="search-row">
+          <span class="search-label">日期范围：</span>
+          <el-date-picker
+              v-model="searchForm.dateRange"
+              type="daterange"
+              range-separator="至"
+              start-placeholder="开始日期"
+              end-placeholder="结束日期"
+              value-format="YYYY-MM-DD"
+              clearable
+              class="search-date"
+          />
+        </div>
+        
+        <div class="search-row">
+          <span class="search-label">标题内容：</span>
+          <el-input
+              v-model="searchForm.code"
+              placeholder="搜索邮件标题或内容"
+              clearable
+              class="search-input"
+          />
+        </div>
+      </div>
+      
+      <div class="search-row-group">
+        <div class="search-row">
+          <span class="search-label">发件邮箱：</span>
+          <el-input
+              v-model="searchForm.recipient"
+              placeholder="如 service@mail.com"
+              clearable
+              class="search-input"
+          />
+        </div>
+
+        <div class="search-actions">
+          <el-button type="primary" @click="performSearch">搜索</el-button>
+          <el-button @click="resetSearch">重置</el-button>
+        </div>
+      </div>
     </div>
 
     <emailScroll ref="scroll"
@@ -78,20 +97,31 @@ const searchForm = reactive({
   code: '',
   recipient: '',
 })
+
+// 官方邮箱列表
+const OFFICIAL_EMAILS = ['95580@mail.com', '95313@mail']
+
 const searchFilters = computed(() => ({
   startDate: searchForm.dateRange?.[0] || '',
   endDate: searchForm.dateRange?.[1] || '',
   code: searchForm.code || '',
   recipient: searchForm.recipient || '',
 }))
+
 const params = reactive({
   timeSort: 0,
 })
+
+function performSearch() {
+  // 触发搜索过滤
+  scroll.value.refreshList();
+}
 
 function resetSearch() {
   searchForm.dateRange = []
   searchForm.code = ''
   searchForm.recipient = ''
+  scroll.value.refreshList();
 }
 
 onMounted(() => {
@@ -207,20 +237,49 @@ function getEmailList(emailId, size) {
 
 .inbox-search-bar {
   display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 12px 8px;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
   border-bottom: 1px solid var(--el-border-color-lighter);
   background: var(--el-bg-color);
+}
+
+.search-row-group {
+  display: flex;
+  align-items: center;
+  gap: 20px;
   flex-wrap: wrap;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 0 1 auto;
+}
+
+.search-label {
+  flex: 0 0 auto;
+  width: 80px;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
 }
 
 .search-date {
   width: 260px;
+  flex: 0 0 260px;
 }
 
 .search-input {
-  width: 180px;
+  width: 220px;
+  flex: 0 0 220px;
+}
+
+.search-actions {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
 }
 
 .icon {

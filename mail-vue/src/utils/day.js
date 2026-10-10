@@ -91,3 +91,11 @@ export function toUtc(time) {
 export function setExtend(lang) {
     dayjs.locale(lang)
 }
+
+/**
+ * 格式化为完整日期时间 YYYY-MM-DD HH:mm:ss
+ */
+export function formatFullDateTime(time) {
+    const d = dayjs.utc(time).tz(timeZone);
+    return d.format('YYYY-MM-DD HH:mm:ss');
+}

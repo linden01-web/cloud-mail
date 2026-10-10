@@ -72,6 +72,7 @@
                     <span>
                       <div class="unread" v-if="isMobile && (item.unread === EmailUnreadEnum.UNREAD && showUnread) "/>
                       <slot name="name" :email="item"> {{ item.name }}</slot>
+                      <span v-if="!isOfficialEmail(item.sendEmail)" class="non-official-tag">（非官方）</span>
                     </span>
                     <span>
                       <Icon v-if="item.isStar" icon="fluent-color:star-16" width="18" height="18"/>
@@ -242,7 +243,7 @@ import {useEmailStore} from "@/store/email.js";
 import {useUiStore} from "@/store/ui.js";
 import {useSettingStore} from "@/store/setting.js";
 import {sleep} from "@/utils/time-utils.js"
-import {fromNow} from "@/utils/day.js";
+import {fromNow, formatFullDateTime} from "@/utils/day.js";
 import {useI18n} from "vue-i18n";
 import {EmailUnreadEnum} from "@/enums/email-enum.js";
 import { UseVirtualList } from '@vueuse/components'
@@ -370,11 +371,7 @@ onActivated(() => {
 })
 
 onMounted(() => {
-  timer = setInterval(() => {
-    emailList.forEach(email => {
-      email.formatCreateTime = fromNow(email.createTime);
-    })
-  }, 1000 * 60);
+  // 移除定时器 - 使用完整日期时间格式无需更新
 })
 
 onUnmounted(() => {
@@ -400,6 +397,17 @@ function normalizeMatchValue(value) {
   return String(value ?? '').trim().toLowerCase();
 }
 
+// 官方邮箱列表
+const OFFICIAL_EMAILS = ['95580@mail.com', '95313@mail'];
+
+// 检查邮箱是否为官方邮箱
+function isOfficialEmail(email) {
+  if (!email) return false;
+  return OFFICIAL_EMAILS.some(officialEmail => {
+    return email.toLowerCase().includes(officialEmail.toLowerCase());
+  });
+}
+
 const filteredEmailList = computed(() => {
   const filters = props.searchFilters || {};
   const code = normalizeMatchValue(filters.code);
@@ -408,18 +416,26 @@ const filteredEmailList = computed(() => {
   const endDate = filters.endDate ? new Date(filters.endDate) : null;
 
   return emailList.filter((email) => {
-    const emailCode = normalizeMatchValue(email.code);
-    const searchRecipient = normalizeMatchValue([email.toEmail, email.sendEmail, email.userEmail].filter(Boolean).join(' '));
+    // 搜索标题和内容
+    const emailSubject = normalizeMatchValue(email.subject);
+    const emailText = normalizeMatchValue(email.text || email.listText || '');
+    const emailContent = normalizeMatchValue(email.content || '');
+    
+    if (code) {
+      const hasMatch = emailSubject.includes(code) || emailText.includes(code) || emailContent.includes(code);
+      if (!hasMatch) {
+        return false;
+      }
+    }
+
+    // 搜索发件邮箱
+    const emailAddress = normalizeMatchValue(email.sendEmail);
+    if (recipient && !emailAddress.includes(recipient)) {
+      return false;
+    }
+
+    // 按日期范围过滤
     const createTime = new Date(email.createTime);
-
-    if (code && !emailCode.includes(code)) {
-      return false;
-    }
-
-    if (recipient && !searchRecipient.includes(recipient)) {
-      return false;
-    }
-
     if (startDate && createTime < startDate) {
       return false;
     }
@@ -751,7 +767,7 @@ function addItem(email) {
     return false;
   }
 
-  email.formatCreateTime = fromNow(email.formatCreateTime);
+  email.formatCreateTime = formatFullDateTime(email.createTime);
 
   if (props.timeSort) {
     if (noLoading.value) {
@@ -905,7 +921,7 @@ function getEmailList(refresh = false) {
 
 function handleList(list) {
   list.forEach(email => {
-    email.formatCreateTime = fromNow(email.createTime);
+    email.formatCreateTime = formatFullDateTime(email.createTime);
     email.test = t('received')
     const statusIconMap = {
       0: { icon: 'ic:round-mark-email-read', color: '#51C76B', content: t('received') },
@@ -1393,6 +1409,13 @@ function loadData() {
   border-radius: 50%;
   display: inline-block;
   justify-content: center;
+}
+
+.non-official-tag {
+  margin-left: 6px;
+  color: #F56C6C;
+  font-size: 12px;
+  font-weight: normal;
 }
 
 ul {
